@@ -484,21 +484,21 @@
     </div>
   </div>
 
-  <!-- Active Inventory Table -->
+  <!-- SECTION 1: Vaccine Lots (Active) -->
   <div class="card">
     <div class="card-header-flex">
-      <h2>Active Opened Items & Vaccines (<span id="clinicNameDisplay">Allen</span>)</h2>
+      <h2>🛡️ Active Vaccine Lots (<span class="clinicNameDisplay">Allen</span>)</h2>
       <div class="table-controls">
         <div class="sort-group">
-          <label for="activeSortSelect">Sort:</label>
-          <select id="activeSortSelect" onchange="renderActiveTable()">
+          <label for="vacSortSelect">Sort:</label>
+          <select id="vacSortSelect" onchange="renderActiveTables()">
             <option value="expAsc">Expiring Soonest</option>
             <option value="expDesc">Expiring Latest</option>
             <option value="entryDesc">Newest Entry</option>
             <option value="entryAsc">Oldest Entry</option>
           </select>
         </div>
-        <button class="btn-secondary" type="button" onclick="exportActiveCSV()">📥 Export CSV</button>
+        <button class="btn-secondary" type="button" onclick="exportCategoryCSV('vaccine')">📥 Export CSV</button>
       </div>
     </div>
 
@@ -506,21 +506,57 @@
       <table>
         <thead>
           <tr>
-            <th>Item Name</th>
+            <th>Vaccine</th>
             <th>Lot #</th>
-            <th>Date Opened / Punctured</th>
+            <th>Date Opened</th>
             <th>Effective Expiration</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
-        <tbody id="activeTableBody"></tbody>
+        <tbody id="vacTableBody"></tbody>
       </table>
-      <div id="emptyMessage" class="empty-state">No active items tracked for this clinic. Log an entry above!</div>
+      <div id="vacEmptyMessage" class="empty-state">No active vaccine lots tracked for this clinic.</div>
     </div>
   </div>
 
-  <!-- Scrap History Log -->
+  <!-- SECTION 2: Injectable Medications (Active) -->
+  <div class="card">
+    <div class="card-header-flex">
+      <h2>💉 Active Injectable Medications (<span class="clinicNameDisplay">Allen</span>)</h2>
+      <div class="table-controls">
+        <div class="sort-group">
+          <label for="medSortSelect">Sort:</label>
+          <select id="medSortSelect" onchange="renderActiveTables()">
+            <option value="expAsc">Expiring Soonest</option>
+            <option value="expDesc">Expiring Latest</option>
+            <option value="entryDesc">Newest Entry</option>
+            <option value="entryAsc">Oldest Entry</option>
+          </select>
+        </div>
+        <button class="btn-secondary" type="button" onclick="exportCategoryCSV('medication')">📥 Export CSV</button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Medication</th>
+            <th>Lot #</th>
+            <th>Date Punctured</th>
+            <th>Effective Expiration</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="medTableBody"></tbody>
+      </table>
+      <div id="medEmptyMessage" class="empty-state">No active injectable medications tracked for this clinic.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Scrap History Log -->
   <div class="card">
     <div class="card-header-flex">
       <h2>Scrap & Disposition History Log</h2>
@@ -697,7 +733,7 @@
     currentLocation = selectElem.value;
     
     const selectedText = selectElem.options[selectElem.selectedIndex].text;
-    document.getElementById('clinicNameDisplay').textContent = selectedText;
+    document.querySelectorAll('.clinicNameDisplay').forEach(el => el.textContent = selectedText);
 
     if (useFirebase) {
       db.ref('locations/' + currentLocation + '/activeVials').off();
@@ -706,7 +742,7 @@
       db.ref('locations/' + currentLocation + '/activeVials').on('value', (snapshot) => {
         const data = snapshot.val();
         activeVials = data ? Object.values(data) : [];
-        renderActiveTable();
+        renderActiveTables();
       }, (error) => {
         console.warn("Firebase read error, local fallback active:", error);
         useFirebase = false;
@@ -731,7 +767,7 @@
     const savedScrap = localStorage.getItem('petfolk_scrap_' + currentLocation);
     scrapHistory = savedScrap ? JSON.parse(savedScrap) : [];
 
-    renderActiveTable();
+    renderActiveTables();
     renderScrapTable();
   }
 
@@ -797,12 +833,12 @@
           console.warn("Cloud write failed, saving locally:", err);
           activeVials.push(newItem);
           saveLocalData();
-          renderActiveTable();
+          renderActiveTables();
         });
     } else {
       activeVials.push(newItem);
       saveLocalData();
-      renderActiveTable();
+      renderActiveTables();
     }
 
     document.getElementById('vialId').value = '';
@@ -853,7 +889,7 @@
         scrapHistory.unshift(scrapRecord);
         activeVials.splice(targetIndex, 1);
         saveLocalData();
-        renderActiveTable();
+        renderActiveTables();
         renderScrapTable();
       }
     }
@@ -902,21 +938,28 @@
     }, 1500);
   }
 
-  function renderActiveTable() {
-    const tbody = document.getElementById('activeTableBody');
-    const emptyMsg = document.getElementById('emptyMessage');
-    const sortMode = document.getElementById('activeSortSelect').value;
+  function renderActiveTables() {
+    renderCategoryTable('vaccine', 'vacTableBody', 'vacEmptyMessage', 'vacSortSelect');
+    renderCategoryTable('medication', 'medTableBody', 'medEmptyMessage', 'medSortSelect');
+  }
+
+  function renderCategoryTable(category, tbodyId, emptyMsgId, sortSelectId) {
+    const tbody = document.getElementById(tbodyId);
+    const emptyMsg = document.getElementById(emptyMsgId);
+    const sortMode = document.getElementById(sortSelectId).value;
 
     tbody.innerHTML = '';
 
-    if (activeVials.length === 0) {
+    const filtered = activeVials.filter(item => item.category === category);
+
+    if (filtered.length === 0) {
       emptyMsg.style.display = 'block';
       return;
     } else {
       emptyMsg.style.display = 'none';
     }
 
-    let sorted = [...activeVials];
+    let sorted = [...filtered];
     sorted.sort((a, b) => {
       const aExp = a.expTimestamp || new Date(a.expDate).getTime();
       const bExp = b.expTimestamp || new Date(b.expDate).getTime();
@@ -949,24 +992,18 @@
       }
 
       const isVaccine = item.category === 'vaccine';
-      const tagClass = isVaccine ? 'tag-vac' : 'tag-med';
-      const tagText = isVaccine ? 'VACCINE' : 'MED';
-      const dateLabel = isVaccine ? `Opened: ${item.entryDate}` : `Punctured: ${item.entryDate}`;
       const copyBtnHtml = item.vialId !== 'N/A' ? `<button class="btn-copy" type="button" onclick="copyLotToClipboard('${item.vialId}', this)">📋 Copy</button>` : '';
 
       const row = `
         <tr>
-          <td>
-            <span class="category-tag ${tagClass}">${tagText}</span>
-            <strong>${item.itemName}</strong>
-          </td>
+          <td><strong>${item.itemName}</strong></td>
           <td>
             <div class="lot-cell">
               <span>${item.vialId}</span>
               ${copyBtnHtml}
             </div>
           </td>
-          <td>${dateLabel}</td>
+          <td>${item.entryDate}</td>
           <td>${expDateObj.toLocaleDateString()}</td>
           <td>${statusBadge}</td>
           <td>
@@ -1028,16 +1065,17 @@
     });
   }
 
-  function exportActiveCSV() {
-    if (activeVials.length === 0) {
-      alert('No active inventory items to export.');
+  function exportCategoryCSV(category) {
+    const filtered = activeVials.filter(item => item.category === category);
+    if (filtered.length === 0) {
+      alert(`No active ${category} items to export.`);
       return;
     }
 
     let csvContent = "data:text/csv;charset=utf-8,Category,Item Name,Lot Number,Entry Date,Effective Expiration Date,Days Remaining,Status\n";
     const now = new Date();
 
-    activeVials.forEach(item => {
+    filtered.forEach(item => {
       const expDateObj = new Date(item.expDate);
       const diffTime = expDateObj - now;
       const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -1048,7 +1086,7 @@
       csvContent += `"${categoryText}","${item.itemName}","${item.vialId}","${item.entryDate}","${expDateObj.toLocaleDateString()}","${daysLeft}","${statusText}"\n`;
     });
 
-    downloadCSV(csvContent, `Petfolk_Active_Inventory_${currentLocation}_${new Date().toISOString().slice(0,10)}.csv`);
+    downloadCSV(csvContent, `Petfolk_${category}_Inventory_${currentLocation}_${new Date().toISOString().slice(0,10)}.csv`);
   }
 
   function exportScrapCSV() {
