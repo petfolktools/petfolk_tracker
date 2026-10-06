@@ -402,7 +402,7 @@
         </select>
       </div>
       <div class="sync-status">
-        <span class="sync-dot" id="syncDot"></span> <span id="syncText">Connecting to Cloud...</span>
+        <span class="sync-dot" id="syncDot"></span> <span id="syncText">Local Mode</span>
       </div>
     </div>
   </div>
@@ -455,21 +455,21 @@
     </div>
   </div>
 
-  <!-- SECTION 1: Injectable Medications -->
+  <!-- Active Inventory Table -->
   <div class="card">
     <div class="card-header-flex">
-      <h2>💉 Active Injectable Medications (<span class="clinicNameDisplay">Allen</span>)</h2>
+      <h2>Active Opened Items & Vaccines (<span id="clinicNameDisplay">Allen</span>)</h2>
       <div class="table-controls">
         <div class="sort-group">
-          <label for="medSortSelect">Sort:</label>
-          <select id="medSortSelect" onchange="renderTables()">
+          <label for="activeSortSelect">Sort:</label>
+          <select id="activeSortSelect" onchange="renderActiveTable()">
             <option value="expAsc">Expiring Soonest</option>
             <option value="expDesc">Expiring Latest</option>
             <option value="entryDesc">Newest Entry</option>
             <option value="entryAsc">Oldest Entry</option>
           </select>
         </div>
-        <button class="btn-secondary" onclick="exportCategoryCSV('medication')">📥 Export CSV</button>
+        <button class="btn-secondary" onclick="exportActiveCSV()">📥 Export CSV</button>
       </div>
     </div>
 
@@ -477,57 +477,21 @@
       <table>
         <thead>
           <tr>
-            <th>Medication</th>
+            <th>Item Name</th>
             <th>Lot #</th>
-            <th>Punctured</th>
+            <th>Date Punctured / Opened</th>
             <th>Effective Expiration</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
-        <tbody id="medTableBody"></tbody>
+        <tbody id="activeTableBody"></tbody>
       </table>
-      <div id="medEmptyMessage" class="empty-state">No active injectable medications tracked.</div>
+      <div id="emptyMessage" class="empty-state">No active items tracked for this clinic. Log an entry above!</div>
     </div>
   </div>
 
-  <!-- SECTION 2: Vaccine Lots -->
-  <div class="card">
-    <div class="card-header-flex">
-      <h2>🛡️ Active Vaccine Lots (<span class="clinicNameDisplay">Allen</span>)</h2>
-      <div class="table-controls">
-        <div class="sort-group">
-          <label for="vacSortSelect">Sort:</label>
-          <select id="vacSortSelect" onchange="renderTables()">
-            <option value="expAsc">Expiring Soonest</option>
-            <option value="expDesc">Expiring Latest</option>
-            <option value="entryDesc">Newest Entry</option>
-            <option value="entryAsc">Oldest Entry</option>
-          </select>
-        </div>
-        <button class="btn-secondary" onclick="exportCategoryCSV('vaccine')">📥 Export CSV</button>
-      </div>
-    </div>
-
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Vaccine</th>
-            <th>Lot #</th>
-            <th>Opened</th>
-            <th>Lot Expiration</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="vacTableBody"></tbody>
-      </table>
-      <div id="vacEmptyMessage" class="empty-state">No active vaccine lots tracked.</div>
-    </div>
-  </div>
-
-  <!-- SECTION 3: Scrap History Log -->
+  <!-- Scrap History Log -->
   <div class="card">
     <div class="card-header-flex">
       <h2>Scrap & Disposition History Log</h2>
@@ -710,7 +674,7 @@
     currentLocation = selectElem.value;
     
     const selectedText = selectElem.options[selectElem.selectedIndex].text;
-    document.querySelectorAll('.clinicNameDisplay').forEach(el => el.textContent = selectedText);
+    document.getElementById('clinicNameDisplay').textContent = selectedText;
 
     if (useFirebase) {
       db.ref('locations/' + currentLocation + '/activeVials').off();
@@ -719,7 +683,12 @@
       db.ref('locations/' + currentLocation + '/activeVials').on('value', (snapshot) => {
         const data = snapshot.val();
         activeVials = data ? Object.values(data) : [];
-        renderTables();
+        renderActiveTable();
+      }, (error) => {
+        console.error("Firebase read blocked:", error);
+        useFirebase = false;
+        updateSyncIndicator();
+        loadLocalFallback();
       });
 
       db.ref('locations/' + currentLocation + '/scrapHistory').on('value', (snapshot) => {
@@ -728,15 +697,19 @@
         renderScrapTable();
       });
     } else {
-      const savedActive = localStorage.getItem('petfolk_vials_' + currentLocation);
-      activeVials = savedActive ? JSON.parse(savedActive) : [];
-
-      const savedScrap = localStorage.getItem('petfolk_scrap_' + currentLocation);
-      scrapHistory = savedScrap ? JSON.parse(savedScrap) : [];
-
-      renderTables();
-      renderScrapTable();
+      loadLocalFallback();
     }
+  }
+
+  function loadLocalFallback() {
+    const savedActive = localStorage.getItem('petfolk_vials_' + currentLocation);
+    activeVials = savedActive ? JSON.parse(savedActive) : [];
+
+    const savedScrap = localStorage.getItem('petfolk_scrap_' + currentLocation);
+    scrapHistory = savedScrap ? JSON.parse(savedScrap) : [];
+
+    renderActiveTable();
+    renderScrapTable();
   }
 
   function saveLocalData() {
@@ -801,11 +774,17 @@
     };
 
     if (useFirebase) {
-      db.ref('locations/' + currentLocation + '/activeVials/' + newItemId).set(newItem);
+      db.ref('locations/' + currentLocation + '/activeVials/' + newItemId).set(newItem)
+        .catch((err) => {
+          console.warn("Cloud write failed, saving locally:", err);
+          activeVials.push(newItem);
+          saveLocalData();
+          renderActiveTable();
+        });
     } else {
       activeVials.push(newItem);
       saveLocalData();
-      renderTables();
+      renderActiveTable();
     }
 
     document.getElementById('vialId').value = '';
@@ -856,7 +835,7 @@
         scrapHistory.unshift(scrapRecord);
         activeVials.splice(targetIndex, 1);
         saveLocalData();
-        renderTables();
+        renderActiveTable();
         renderScrapTable();
       }
     }
@@ -864,28 +843,22 @@
     closeScrapModal();
   }
 
-  function renderTables() {
-    renderCategoryTable('medication', 'medTableBody', 'medEmptyMessage', 'medSortSelect');
-    renderCategoryTable('vaccine', 'vacTableBody', 'vacEmptyMessage', 'vacSortSelect');
-  }
-
-  function renderCategoryTable(category, tbodyId, emptyMsgId, sortSelectId) {
-    const tbody = document.getElementById(tbodyId);
-    const emptyMsg = document.getElementById(emptyMsgId);
-    const sortMode = document.getElementById(sortSelectId).value;
+  function renderActiveTable() {
+    const tbody = document.getElementById('activeTableBody');
+    const emptyMsg = document.getElementById('emptyMessage');
+    const sortMode = document.getElementById('activeSortSelect').value;
 
     tbody.innerHTML = '';
 
-    const filtered = activeVials.filter(item => item.category === category);
-
-    if (filtered.length === 0) {
+    if (activeVials.length === 0) {
       emptyMsg.style.display = 'block';
       return;
     } else {
       emptyMsg.style.display = 'none';
     }
 
-    filtered.sort((a, b) => {
+    let sorted = [...activeVials];
+    sorted.sort((a, b) => {
       const aExp = a.expTimestamp || new Date(a.expDate).getTime();
       const bExp = b.expTimestamp || new Date(b.expDate).getTime();
       const aEntry = a.entryTimestamp || new Date(a.entryDate).getTime();
@@ -900,7 +873,7 @@
 
     const now = new Date();
 
-    filtered.forEach(item => {
+    sorted.forEach(item => {
       const expDateObj = new Date(item.expDate);
       const diffTime = expDateObj - now;
       const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -916,11 +889,19 @@
         statusBadge = `<span class="badge badge-safe">🟢 Fresh (${daysLeft}d)</span>`;
       }
 
+      const isVaccine = item.category === 'vaccine';
+      const tagClass = isVaccine ? 'tag-vac' : 'tag-med';
+      const tagText = isVaccine ? 'VACCINE' : 'MED';
+      const dateLabel = isVaccine ? `Opened: ${item.entryDate}` : `Punctured: ${item.entryDate}`;
+
       const row = `
         <tr>
-          <td><strong>${item.itemName}</strong></td>
+          <td>
+            <span class="category-tag ${tagClass}">${tagText}</span>
+            <strong>${item.itemName}</strong>
+          </td>
           <td>${item.vialId}</td>
-          <td>${item.entryDate}</td>
+          <td>${dateLabel}</td>
           <td>${expDateObj.toLocaleDateString()}</td>
           <td>${statusBadge}</td>
           <td>
@@ -976,17 +957,16 @@
     });
   }
 
-  function exportCategoryCSV(category) {
-    const filtered = activeVials.filter(item => item.category === category);
-    if (filtered.length === 0) {
-      alert(`No active ${category} items to export.`);
+  function exportActiveCSV() {
+    if (activeVials.length === 0) {
+      alert('No active inventory items to export.');
       return;
     }
 
     let csvContent = "data:text/csv;charset=utf-8,Category,Item Name,Lot Number,Entry Date,Effective Expiration Date,Days Remaining,Status\n";
     const now = new Date();
 
-    filtered.forEach(item => {
+    activeVials.forEach(item => {
       const expDateObj = new Date(item.expDate);
       const diffTime = expDateObj - now;
       const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -997,7 +977,7 @@
       csvContent += `"${categoryText}","${item.itemName}","${item.vialId}","${item.entryDate}","${expDateObj.toLocaleDateString()}","${daysLeft}","${statusText}"\n`;
     });
 
-    downloadCSV(csvContent, `Petfolk_${category}_Inventory_${currentLocation}_${new Date().toISOString().slice(0,10)}.csv`);
+    downloadCSV(csvContent, `Petfolk_Active_Inventory_${currentLocation}_${new Date().toISOString().slice(0,10)}.csv`);
   }
 
   function exportScrapCSV() {
