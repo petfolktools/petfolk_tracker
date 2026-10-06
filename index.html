@@ -431,7 +431,7 @@
         </select>
       </div>
       <div class="sync-status">
-        <span class="sync-dot" id="syncDot"></span> <span id="syncText">Local Mode</span>
+        <span class="sync-dot" id="syncDot"></span> <span id="syncText">Connecting...</span>
       </div>
     </div>
   </div>
@@ -469,7 +469,7 @@
         <input type="date" id="lotExpDate">
       </div>
 
-      <button class="btn-submit" onclick="logItem()">+ Log Entry</button>
+      <button class="btn-submit" type="button" onclick="logItem()">+ Log Entry</button>
     </div>
 
     <div id="medOverrideGroup" style="display: none; margin-top: 16px;">
@@ -498,7 +498,7 @@
             <option value="entryAsc">Oldest Entry</option>
           </select>
         </div>
-        <button class="btn-secondary" onclick="exportActiveCSV()">📥 Export CSV</button>
+        <button class="btn-secondary" type="button" onclick="exportActiveCSV()">📥 Export CSV</button>
       </div>
     </div>
 
@@ -532,7 +532,7 @@
             <option value="dateAsc">Date Scrapped (Oldest First)</option>
           </select>
         </div>
-        <button class="btn-secondary" onclick="exportScrapCSV()">📊 Export Scrap History (CSV)</button>
+        <button class="btn-secondary" type="button" onclick="exportScrapCSV()">📊 Export Scrap History (CSV)</button>
       </div>
     </div>
 
@@ -574,8 +574,8 @@
     </div>
 
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeScrapModal()">Cancel</button>
-      <button class="btn-submit" onclick="confirmScrap()">Confirm Scrap</button>
+      <button class="btn-secondary" type="button" onclick="closeScrapModal()">Cancel</button>
+      <button class="btn-submit" type="button" onclick="confirmScrap()">Confirm Scrap</button>
     </div>
   </div>
 </div>
@@ -600,7 +600,7 @@
     db = firebase.database();
     useFirebase = true;
   } catch(e) {
-    console.warn("Firebase initialization error, switching to local storage fallback:", e);
+    console.warn("Firebase initialize error, using local fallback:", e);
   }
 
   let currentLocation = 'allen';
@@ -635,7 +635,7 @@
     { name: "Meloxicam", days: 180, label: "180 days post-puncture" }
   ];
 
-  window.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
     updateSyncIndicator();
     toggleCategory();
     switchLocation();
@@ -649,7 +649,7 @@
       text.textContent = "Live Cloud Sync Active";
     } else {
       dot.classList.remove('active');
-      text.textContent = "Local Storage Mode";
+      text.textContent = "Local Mode";
     }
   }
 
@@ -708,7 +708,7 @@
         activeVials = data ? Object.values(data) : [];
         renderActiveTable();
       }, (error) => {
-        console.error("Firebase read blocked:", error);
+        console.warn("Firebase read error, local fallback active:", error);
         useFirebase = false;
         updateSyncIndicator();
         loadLocalFallback();
@@ -861,14 +861,13 @@
     closeScrapModal();
   }
 
-  /* Copy Lot Number to Clipboard Function */
   function copyLotToClipboard(text, btnElement) {
     if (!text || text === 'N/A') return;
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         showCopyFeedback(btnElement);
-      }).catch(err => {
+      }).catch(() => {
         fallbackCopyText(text, btnElement);
       });
     } else {
@@ -888,7 +887,7 @@
       document.execCommand('copy');
       showCopyFeedback(btnElement);
     } catch (err) {
-      console.error('Fallback copy failed', err);
+      console.error('Copy failed', err);
     }
     document.body.removeChild(textArea);
   }
@@ -953,7 +952,7 @@
       const tagClass = isVaccine ? 'tag-vac' : 'tag-med';
       const tagText = isVaccine ? 'VACCINE' : 'MED';
       const dateLabel = isVaccine ? `Opened: ${item.entryDate}` : `Punctured: ${item.entryDate}`;
-      const copyBtnHtml = item.vialId !== 'N/A' ? `<button class="btn-copy" onclick="copyLotToClipboard('${item.vialId}', this)">📋 Copy</button>` : '';
+      const copyBtnHtml = item.vialId !== 'N/A' ? `<button class="btn-copy" type="button" onclick="copyLotToClipboard('${item.vialId}', this)">📋 Copy</button>` : '';
 
       const row = `
         <tr>
@@ -971,7 +970,7 @@
           <td>${expDateObj.toLocaleDateString()}</td>
           <td>${statusBadge}</td>
           <td>
-            <button class="btn-scrap" onclick="openScrapModal(${item.id})">Scrap</button>
+            <button class="btn-scrap" type="button" onclick="openScrapModal(${item.id})">Scrap</button>
           </td>
         </tr>
       `;
@@ -1007,7 +1006,7 @@
       const isVaccine = record.category === 'vaccine';
       const tagClass = isVaccine ? 'tag-vac' : 'tag-med';
       const tagText = isVaccine ? 'VACCINE' : 'MED';
-      const copyBtnHtml = record.vialId !== 'N/A' ? `<button class="btn-copy" onclick="copyLotToClipboard('${record.vialId}', this)">📋 Copy</button>` : '';
+      const copyBtnHtml = record.vialId !== 'N/A' ? `<button class="btn-copy" type="button" onclick="copyLotToClipboard('${record.vialId}', this)">📋 Copy</button>` : '';
 
       const row = `
         <tr>
