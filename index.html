@@ -264,6 +264,35 @@
       font-size: 14px;
     }
 
+    .lot-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-copy {
+      background-color: var(--petfolk-accent);
+      color: var(--petfolk-primary);
+      border: 1px solid var(--petfolk-border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-copy:hover {
+      background-color: #d1e0d8;
+    }
+
+    .btn-copy.copied {
+      background-color: #E3F2E9;
+      color: #1C5235;
+      border-color: #A3D9C9;
+    }
+
     .badge {
       display: inline-block;
       padding: 5px 12px;
@@ -385,7 +414,7 @@
         </svg>
         <h1>Petfolk Open-Vial & Vaccine Tracker</h1>
       </div>
-      <p>Real-time inventory tracking for multi-dose vials and vaccine lots to eliminate waste.</p>
+      <p>Real-time inventory tracking for vaccine lots and multi-dose vials to eliminate waste.</p>
     </div>
 
     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
@@ -409,14 +438,14 @@
 
   <!-- Form Section -->
   <div class="card">
-    <h2>Log Opened Item or Vaccine Lot</h2>
+    <h2>Log Vaccine Lot or Opened Item</h2>
     <div class="form-grid">
       
       <div class="form-group">
         <label for="categorySelect">Category</label>
         <select id="categorySelect" onchange="toggleCategory()">
-          <option value="medication">Injectable Medication</option>
           <option value="vaccine">Vaccine</option>
+          <option value="medication">Injectable Medication</option>
         </select>
       </div>
 
@@ -431,11 +460,11 @@
       </div>
 
       <div class="form-group">
-        <label for="entryDateInput" id="entryDateLabel">Date Punctured</label>
+        <label for="entryDateInput" id="entryDateLabel">Date Opened (Optional)</label>
         <input type="date" id="entryDateInput">
       </div>
 
-      <div class="form-group" id="vaccineExpGroup" style="display: none;">
+      <div class="form-group" id="vaccineExpGroup">
         <label for="lotExpDate">Vaccine Lot Expiration Date</label>
         <input type="date" id="lotExpDate">
       </div>
@@ -443,7 +472,7 @@
       <button class="btn-submit" onclick="logItem()">+ Log Entry</button>
     </div>
 
-    <div id="medOverrideGroup" style="margin-top: 16px;">
+    <div id="medOverrideGroup" style="display: none; margin-top: 16px;">
       <label class="checkbox-label">
         <input type="checkbox" id="overrideCheckbox" onchange="toggleOverrideDate()">
         Bottle Lot Expires Earlier than Post-Puncture Window
@@ -479,7 +508,7 @@
           <tr>
             <th>Item Name</th>
             <th>Lot #</th>
-            <th>Date Punctured / Opened</th>
+            <th>Date Opened / Punctured</th>
             <th>Effective Expiration</th>
             <th>Status</th>
             <th>Action</th>
@@ -579,19 +608,6 @@
   let scrapHistory = [];
   let pendingScrapId = null;
 
-  const medicationCatalog = [
-    { name: "ProHeart 12", days: 56, label: "56 days post-puncture" },
-    { name: "Convenia", days: 56, label: "56 days post-puncture" },
-    { name: "Onsior", days: 84, label: "84 days post-puncture" },
-    { name: "Rimadyl", days: 28, label: "28 days post-puncture" },
-    { name: "Cerenia", days: 90, label: "90 days post-puncture" },
-    { name: "Depo-Medrol", days: 84, label: "84 days post-puncture" },
-    { name: "Praziquantel", days: 180, label: "180 days post-puncture" },
-    { name: "Mometamax Singles", days: 90, label: "90 days post-puncture" },
-    { name: "Furosemide", days: 28, label: "28 days post-puncture" },
-    { name: "Meloxicam", days: 180, label: "180 days post-puncture" }
-  ];
-
   const vaccineCatalog = [
     "FVRCP",
     "FeLV",
@@ -606,9 +622,21 @@
     "DaLPP"
   ];
 
+  const medicationCatalog = [
+    { name: "ProHeart 12", days: 56, label: "56 days post-puncture" },
+    { name: "Convenia", days: 56, label: "56 days post-puncture" },
+    { name: "Onsior", days: 84, label: "84 days post-puncture" },
+    { name: "Rimadyl", days: 28, label: "28 days post-puncture" },
+    { name: "Cerenia", days: 90, label: "90 days post-puncture" },
+    { name: "Depo-Medrol", days: 84, label: "84 days post-puncture" },
+    { name: "Praziquantel", days: 180, label: "180 days post-puncture" },
+    { name: "Mometamax Singles", days: 90, label: "90 days post-puncture" },
+    { name: "Furosemide", days: 28, label: "28 days post-puncture" },
+    { name: "Meloxicam", days: 180, label: "180 days post-puncture" }
+  ];
+
   window.addEventListener('DOMContentLoaded', function() {
     updateSyncIndicator();
-    resetEntryDateToToday();
     toggleCategory();
     switchLocation();
   });
@@ -625,11 +653,6 @@
     }
   }
 
-  function resetEntryDateToToday() {
-    const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('entryDateInput').value = todayStr;
-  }
-
   function toggleCategory() {
     const category = document.getElementById('categorySelect').value;
     const itemSelect = document.getElementById('itemSelect');
@@ -639,19 +662,8 @@
 
     itemSelect.innerHTML = '';
 
-    if (category === 'medication') {
-      entryDateLabel.textContent = "Date Punctured";
-      vaccineExpGroup.style.display = 'none';
-      medOverrideGroup.style.display = 'block';
-
-      medicationCatalog.forEach((med, index) => {
-        const opt = document.createElement('option');
-        opt.value = index;
-        opt.textContent = `${med.name} (${med.label})`;
-        itemSelect.appendChild(opt);
-      });
-    } else {
-      entryDateLabel.textContent = "Date Opened";
+    if (category === 'vaccine') {
+      entryDateLabel.textContent = "Date Opened (Optional)";
       vaccineExpGroup.style.display = 'flex';
       medOverrideGroup.style.display = 'none';
 
@@ -659,6 +671,17 @@
         const opt = document.createElement('option');
         opt.value = vac;
         opt.textContent = vac;
+        itemSelect.appendChild(opt);
+      });
+    } else {
+      entryDateLabel.textContent = "Date Punctured (Optional)";
+      vaccineExpGroup.style.display = 'none';
+      medOverrideGroup.style.display = 'block';
+
+      medicationCatalog.forEach((med, index) => {
+        const opt = document.createElement('option');
+        opt.value = index;
+        opt.textContent = `${med.name} (${med.label})`;
         itemSelect.appendChild(opt);
       });
     }
@@ -723,16 +746,19 @@
     const vialId = document.getElementById('vialId').value.trim() || 'N/A';
     const entryDateVal = document.getElementById('entryDateInput').value;
 
-    if (!entryDateVal) {
-      alert('Please select a Date Punctured / Opened.');
-      return;
-    }
-
-    const baseEntryDate = new Date(entryDateVal + 'T00:00:00');
+    const baseEntryDate = entryDateVal ? new Date(entryDateVal + 'T00:00:00') : new Date();
     let itemName = '';
     let expDate = new Date(baseEntryDate);
 
-    if (category === 'medication') {
+    if (category === 'vaccine') {
+      itemName = itemSelect.value;
+      const dateInput = document.getElementById('lotExpDate').value;
+      if (!dateInput) {
+        alert('Please select a Vaccine Lot Expiration Date.');
+        return;
+      }
+      expDate = new Date(dateInput + 'T23:59:59');
+    } else {
       const selectedIndex = parseInt(itemSelect.value);
       const selectedMed = medicationCatalog[selectedIndex];
       if (!selectedMed) return;
@@ -751,14 +777,6 @@
           expDate = overrideDateObj;
         }
       }
-    } else {
-      itemName = itemSelect.value;
-      const dateInput = document.getElementById('lotExpDate').value;
-      if (!dateInput) {
-        alert('Please select a Vaccine Lot Expiration Date.');
-        return;
-      }
-      expDate = new Date(dateInput + 'T23:59:59');
     }
 
     const newItemId = Date.now();
@@ -788,10 +806,10 @@
     }
 
     document.getElementById('vialId').value = '';
+    document.getElementById('entryDateInput').value = '';
     document.getElementById('lotExpDate').value = '';
     document.getElementById('overrideExpDate').value = '';
     document.getElementById('overrideCheckbox').checked = false;
-    resetEntryDateToToday();
     toggleOverrideDate();
   }
 
@@ -841,6 +859,48 @@
     }
 
     closeScrapModal();
+  }
+
+  /* Copy Lot Number to Clipboard Function */
+  function copyLotToClipboard(text, btnElement) {
+    if (!text || text === 'N/A') return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showCopyFeedback(btnElement);
+      }).catch(err => {
+        fallbackCopyText(text, btnElement);
+      });
+    } else {
+      fallbackCopyText(text, btnElement);
+    }
+  }
+
+  function fallbackCopyText(text, btnElement) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      showCopyFeedback(btnElement);
+    } catch (err) {
+      console.error('Fallback copy failed', err);
+    }
+    document.body.removeChild(textArea);
+  }
+
+  function showCopyFeedback(btnElement) {
+    const originalText = btnElement.innerHTML;
+    btnElement.innerHTML = '✓ Copied!';
+    btnElement.classList.add('copied');
+    setTimeout(() => {
+      btnElement.innerHTML = originalText;
+      btnElement.classList.remove('copied');
+    }, 1500);
   }
 
   function renderActiveTable() {
@@ -893,6 +953,7 @@
       const tagClass = isVaccine ? 'tag-vac' : 'tag-med';
       const tagText = isVaccine ? 'VACCINE' : 'MED';
       const dateLabel = isVaccine ? `Opened: ${item.entryDate}` : `Punctured: ${item.entryDate}`;
+      const copyBtnHtml = item.vialId !== 'N/A' ? `<button class="btn-copy" onclick="copyLotToClipboard('${item.vialId}', this)">📋 Copy</button>` : '';
 
       const row = `
         <tr>
@@ -900,7 +961,12 @@
             <span class="category-tag ${tagClass}">${tagText}</span>
             <strong>${item.itemName}</strong>
           </td>
-          <td>${item.vialId}</td>
+          <td>
+            <div class="lot-cell">
+              <span>${item.vialId}</span>
+              ${copyBtnHtml}
+            </div>
+          </td>
           <td>${dateLabel}</td>
           <td>${expDateObj.toLocaleDateString()}</td>
           <td>${statusBadge}</td>
@@ -941,6 +1007,7 @@
       const isVaccine = record.category === 'vaccine';
       const tagClass = isVaccine ? 'tag-vac' : 'tag-med';
       const tagText = isVaccine ? 'VACCINE' : 'MED';
+      const copyBtnHtml = record.vialId !== 'N/A' ? `<button class="btn-copy" onclick="copyLotToClipboard('${record.vialId}', this)">📋 Copy</button>` : '';
 
       const row = `
         <tr>
@@ -948,7 +1015,12 @@
             <span class="category-tag ${tagClass}">${tagText}</span>
             <strong>${record.itemName}</strong>
           </td>
-          <td>${record.vialId}</td>
+          <td>
+            <div class="lot-cell">
+              <span>${record.vialId}</span>
+              ${copyBtnHtml}
+            </div>
+          </td>
           <td>${record.scrapDate}</td>
           <td><em>${record.reason}</em></td>
         </tr>
