@@ -48,7 +48,7 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 960px;
       margin: 0 auto;
     }
 
@@ -116,7 +116,7 @@
     .card {
       background: var(--petfolk-card-bg);
       border-radius: 16px;
-      padding: 24px;
+      padding: 28px;
       box-shadow: 0 4px 20px rgba(29, 42, 36, 0.04);
       margin-bottom: 24px;
       border: 1px solid var(--petfolk-border);
@@ -126,7 +126,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
       gap: 12px;
     }
@@ -148,7 +148,7 @@
     }
 
     .sort-group select {
-      padding: 5px 8px;
+      padding: 6px 10px;
       font-size: 12px;
       border-radius: 8px;
     }
@@ -157,18 +157,6 @@
       font-size: 18px;
       font-weight: 700;
       color: var(--petfolk-primary);
-    }
-
-    .columns-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-      gap: 24px;
-    }
-
-    @media (max-width: 600px) {
-      .columns-grid {
-        grid-template-columns: 1fr;
-      }
     }
 
     .form-grid {
@@ -263,24 +251,24 @@
     th {
       background-color: var(--petfolk-accent);
       color: var(--petfolk-primary);
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 12px 14px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--petfolk-border);
     }
 
     td {
-      padding: 14px;
+      padding: 16px;
       border-bottom: 1px solid var(--petfolk-border);
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .badge {
       display: inline-block;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 20px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
     }
 
@@ -293,9 +281,9 @@
       background-color: #FFF0F0;
       color: #C53030;
       border: 1px solid #FEB2B2;
-      padding: 5px 10px;
+      padding: 6px 12px;
       border-radius: 6px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -308,17 +296,17 @@
     .empty-state {
       text-align: center;
       color: var(--petfolk-text-muted);
-      padding: 24px;
-      font-size: 13px;
+      padding: 28px;
+      font-size: 14px;
     }
 
     .category-tag {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 2px 5px;
+      padding: 2px 6px;
       border-radius: 4px;
-      margin-right: 4px;
+      margin-right: 6px;
     }
     .tag-med { background-color: #E2E8F0; color: #334155; }
     .tag-vac { background-color: #E0F2FE; color: #0369A1; }
@@ -467,88 +455,85 @@
     </div>
   </div>
 
-  <!-- Split Side-by-Side Columns for Active Logs -->
-  <div class="columns-grid">
-    
-    <!-- COLUMN 1: Injectable Medications -->
-    <div class="card">
-      <div class="card-header-flex">
-        <h2>💉 Injectable Medications (<span class="clinicNameDisplay">Allen</span>)</h2>
-        <div class="table-controls">
-          <div class="sort-group">
-            <select id="medSortSelect" onchange="renderTables()">
-              <option value="expAsc">Expiring Soonest</option>
-              <option value="expDesc">Expiring Latest</option>
-              <option value="entryDesc">Newest Entry</option>
-              <option value="entryAsc">Oldest Entry</option>
-            </select>
-          </div>
-          <button class="btn-secondary" onclick="exportCategoryCSV('medication')">📥 CSV</button>
+  <!-- SECTION 1: Injectable Medications -->
+  <div class="card">
+    <div class="card-header-flex">
+      <h2>💉 Active Injectable Medications (<span class="clinicNameDisplay">Allen</span>)</h2>
+      <div class="table-controls">
+        <div class="sort-group">
+          <label for="medSortSelect">Sort:</label>
+          <select id="medSortSelect" onchange="renderTables()">
+            <option value="expAsc">Expiring Soonest</option>
+            <option value="expDesc">Expiring Latest</option>
+            <option value="entryDesc">Newest Entry</option>
+            <option value="entryAsc">Oldest Entry</option>
+          </select>
         </div>
-      </div>
-
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Medication</th>
-              <th>Lot #</th>
-              <th>Punctured</th>
-              <th>Effective Exp</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="medTableBody"></tbody>
-        </table>
-        <div id="medEmptyMessage" class="empty-state">No active injectable medications tracked.</div>
+        <button class="btn-secondary" onclick="exportCategoryCSV('medication')">📥 Export CSV</button>
       </div>
     </div>
 
-    <!-- COLUMN 2: Vaccines -->
-    <div class="card">
-      <div class="card-header-flex">
-        <h2>🛡️ Vaccine Lots (<span class="clinicNameDisplay">Allen</span>)</h2>
-        <div class="table-controls">
-          <div class="sort-group">
-            <select id="vacSortSelect" onchange="renderTables()">
-              <option value="expAsc">Expiring Soonest</option>
-              <option value="expDesc">Expiring Latest</option>
-              <option value="entryDesc">Newest Entry</option>
-              <option value="entryAsc">Oldest Entry</option>
-            </select>
-          </div>
-          <button class="btn-secondary" onclick="exportCategoryCSV('vaccine')">📥 CSV</button>
-        </div>
-      </div>
-
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Vaccine</th>
-              <th>Lot #</th>
-              <th>Opened</th>
-              <th>Lot Exp</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="vacTableBody"></tbody>
-        </table>
-        <div id="vacEmptyMessage" class="empty-state">No active vaccine lots tracked.</div>
-      </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Medication</th>
+            <th>Lot #</th>
+            <th>Punctured</th>
+            <th>Effective Expiration</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="medTableBody"></tbody>
+      </table>
+      <div id="medEmptyMessage" class="empty-state">No active injectable medications tracked.</div>
     </div>
-
   </div>
 
-  <!-- Scrap History Log -->
+  <!-- SECTION 2: Vaccine Lots -->
+  <div class="card">
+    <div class="card-header-flex">
+      <h2>🛡️ Active Vaccine Lots (<span class="clinicNameDisplay">Allen</span>)</h2>
+      <div class="table-controls">
+        <div class="sort-group">
+          <label for="vacSortSelect">Sort:</label>
+          <select id="vacSortSelect" onchange="renderTables()">
+            <option value="expAsc">Expiring Soonest</option>
+            <option value="expDesc">Expiring Latest</option>
+            <option value="entryDesc">Newest Entry</option>
+            <option value="entryAsc">Oldest Entry</option>
+          </select>
+        </div>
+        <button class="btn-secondary" onclick="exportCategoryCSV('vaccine')">📥 Export CSV</button>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Vaccine</th>
+            <th>Lot #</th>
+            <th>Opened</th>
+            <th>Lot Expiration</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="vacTableBody"></tbody>
+      </table>
+      <div id="vacEmptyMessage" class="empty-state">No active vaccine lots tracked.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Scrap History Log -->
   <div class="card">
     <div class="card-header-flex">
       <h2>Scrap & Disposition History Log</h2>
       <div class="table-controls">
         <div class="sort-group">
-          <label for="scrapSortSelect">Sort By:</label>
+          <label for="scrapSortSelect">Sort:</label>
           <select id="scrapSortSelect" onchange="renderScrapTable()">
             <option value="dateDesc">Date Scrapped (Newest First)</option>
             <option value="dateAsc">Date Scrapped (Oldest First)</option>
@@ -879,7 +864,6 @@
     closeScrapModal();
   }
 
-  /* Render Both Active Tables Independently */
   function renderTables() {
     renderCategoryTable('medication', 'medTableBody', 'medEmptyMessage', 'medSortSelect');
     renderCategoryTable('vaccine', 'vacTableBody', 'vacEmptyMessage', 'vacSortSelect');
@@ -901,7 +885,6 @@
       emptyMsg.style.display = 'none';
     }
 
-    // Sort filtered list
     filtered.sort((a, b) => {
       const aExp = a.expTimestamp || new Date(a.expDate).getTime();
       const bExp = b.expTimestamp || new Date(b.expDate).getTime();
